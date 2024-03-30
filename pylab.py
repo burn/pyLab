@@ -238,11 +238,24 @@ class DATA(OBJ):
 class TREE(OBJ):
   def __init__(self,data:DATA, klasses, BEST:int, REST:int, 
               best="best":str, rest="rest":str, stop=2, how=lambda B,R: B - R):
-    def fun(x): return -BIN.score(self.lst2len(x),BEST,REST,goal=best,how=how)
+    def score(x): return -BIN.score(self.lst2len(x),BEST,REST,goal=best,how=how)
+    def count(klasses): return sum(len(rows) for _,rows in klasses.items())
     bins  = [bin for col in data.cols.x for bin in col.bins(klasses)] 
-    def step(klasses):
-       
-    self.root  = self.step(klasses)
+    def step(klasses, here, above):
+      here = dict(leaf=True, has=klasses, left=None,right=None)
+      if here < above and here > stop:
+         here.leaf=False
+         bin,yes,no,most = None,None,None,-1
+         for bin1 in bins:
+           yes1,no1 = bin.selectss(klasses)
+           tmp = score(yes1)
+           if tmp > most: bin,yes,no,most = bin1,yes1,no1,tmp
+        here.left= 
+
+
+    here=  count(klasses)
+    stop= here**.5  
+    self.root  = self.step(klasses, count(klasses), 1E30)
     return self.root
     
   
