@@ -10,7 +10,7 @@ from collections import Counter
 from fileinput import FileInput as file_or_stdin 
 #----------------------------------------------------------------------------------------
 # # System Inits
-options = dict(k=1, m=2, bins=10, file="../data/auto93.csv", seed=1234567891) 
+options = dict(k=1, m=2, bins=10, file="../tests4mop/misc/auto93.csv", seed=1234567891) 
 
 big = 1E32
 tiny = 1/big
