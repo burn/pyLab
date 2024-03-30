@@ -1,13 +1,13 @@
 #!/usr/bin/env python3 -B
 """
-pylab.py: active learning, models the best/rest seen so far in a Bayes classifier    
+pylab.py: active learning, models the best/rest seen so far in a Bayes classifier.         
 (c) 2024 Tim Menzies <timm@ieee.org>
 """
 from __future__ import annotations   # <1> ## types  
 from typing import Any,Iterable,Callable
 import re,ast,sys, json,math,random
 from collections import Counter
-from fileinput import FileInput as file_or_stdin 
+from fileinput import FileInput as file_or_stdin
 #----------------------------------------------------------------------------------------
 # # System Inits
 options = dict(k=1, m=2, bins=10, file="../tests4mop/misc/auto93.csv", seed=1234567891) 
@@ -66,14 +66,20 @@ class BIN(OBJ):
       if ni < minSize or nj < minSize: return k # merge bins that are too small
       if ek <= (ni*ei + nj*ej)/nk    : return k # merge bins if combo not as complex
   
-  # ### Find relevant rules 
-  def selectss(i, klasses: Klasses) -> dict: 
-    return {k:len([row for row in rows if i.selects(row)]) 
-            for k,rows in klasses.items()}
+  # ### Find relevant rows 
+  def selectss(self, klasses: Klasses) -> dict,dict: 
+    yes = {k:[] for k in klasses}
+    no  = {k:[] for k in klasses}
+    for k,rows in klasses.items():
+      for _,row in rows:
+        if self.selects(row): yes[k].append(row)
+        else                : no[k].append(row)
+    return yes,no 
    
   def selects(i, row: Row) -> bool: 
     x = row[i.at]
     return  x=="?" or i.lo == x == i.hi or i.lo <= x < i.hi
+  
 #----------------------------------------------------------------------------------------
 class COL(OBJ):
   """## COL  
@@ -211,13 +217,10 @@ class DATA(OBJ):
 
   # ### Creation  
   def clone(i,lst:Iterable[Row]=[],ordered=False) -> DATA:  
-    return DATA([i.cols.names]+lst)
+    return DATA([i.cols.names]+lst)    
+  
   def order(i) -> Rows:
-
-
-    
-    i.rows = sorted(i.rows, key=i.d2h, reverse=False)
-    return i.rows
+    return sorted(i.rows, key=i.d2h, reverse=False) 
   
   # ### Distance  
   def d2h(i, row:Row) -> float:
@@ -234,34 +237,31 @@ class DATA(OBJ):
   
 class TREE(OBJ):
   def __init__(self,data:DATA, klasses, BEST:int, REST:int, 
-              best:str, rest:str, stop=2, how=None):
-    self.best, self.rest, self.stop = best,rest,stop
-    self.bins  = [bin for col in data.cols.x for bin in col.bins(klasses)] 
-    self.score = lambda x: -BIN.score(self.lst2len(x),BEST,REST,
-                                      goal=best,how=lambda B,R: B - R)
+              best="best":str, rest="rest":str, stop=2, how=lambda B,R: B - R):
+    def fun(x): return -BIN.score(self.lst2len(x),BEST,REST,goal=best,how=how)
+    bins  = [bin for col in data.cols.x for bin in col.bins(klasses)] 
+    def step(klasses):
+       
     self.root  = self.step(klasses)
+    return self.root
     
-  def lst2len(self,klasses): return {k:len(rows) for k,rows in klasses.items()} 
-
-  def leaf(self,klasses):    return dict(leaf=True, has=self.lst2len(klasses))
+  
 
   def step(self,klasses,lvl=0,above=1E30):
-    #print('|.. '*lvl)
-    best0 = klasses[self.best]
-    rest0 = klasses[self.rest]
-    here = len(best0)  
+    here = len(klasses[j])  
     if here <= self.stop or here==above: return self.leaf(klasses)
     yes,no,most = None,None,-1
     for bin in self.bins:
-      yes0 = dict(best=[], rest=[]) 
-      no0  = dict(best=[], rest=[]) 
-      for row in best0: (yes0["best"] if bin.selects(row) else no0["best"]).append(row)
-      for row in rest0: (yes0["rest"] if bin.selects(row) else no0["rest"]).append(row)
+      yes0,no0 = bin,selectss(klass) 
       tmp = self.score(yes0)
       if tmp > most: yes,no,most = yes0,no0,tmp
     return dict(leaf=False, at=bin.at, txt=bin.txt,
                 lo=bin.lo, hi=bin.hi, yes=self.step(yes,lvl+1,here),no=self.step(no,lvl+1,here)) 
   
+  def lst2len(self,klasses): return {k:len(rows) for k,rows in klasses.items()} 
+
+  def leaf(self,klasses):    return dict(leaf=True, has=self.lst2len(klasses))
+
   def node(i,d):
     yield d
     for d1 in [d.yes,d.no]:
