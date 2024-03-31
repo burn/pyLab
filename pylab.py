@@ -26,6 +26,8 @@ class OBJ:
   """ 
   def __init__(i,**d)    : i.__dict__.update(d)
   def __repr__(i) -> str : return i.__class__.__name__+show(i.__dict__)
+  def toJSxON(self): return json.dumps(self, default=lambda o: o.__dict__, 
+                                      sort_keys=True, indent=4)
 #----------------------------------------------------------------------------------------
 # # Classes 
 class BIN(OBJ):
@@ -67,11 +69,11 @@ class BIN(OBJ):
       if ek <= (ni*ei + nj*ej)/nk    : return k # merge bins if combo not as complex
   
   # ### Find relevant rows 
-  def selectss(self, klasses: Klasses) -> dict,dict: 
+  def selectss(self, klasses: Klasses) -> tuple[dict,dict]: 
     yes = {k:[] for k in klasses}
     no  = {k:[] for k in klasses}
     for k,rows in klasses.items():
-      for _,row in rows:
+      for row in rows:
         if self.selects(row): yes[k].append(row)
         else                : no[k].append(row)
     return yes,no 
@@ -235,50 +237,33 @@ class DATA(OBJ):
 #---------------------------------------------------------------------------------------- 
 # ### Tree
   
-class TREE(OBJ):
-  def __init__(self,data:DATA, klasses, BEST:int, REST:int, 
-              best="best":str, rest="rest":str, stop=2, how=lambda B,R: B - R):
-    def score(x): return -BIN.score(self.lst2len(x),BEST,REST,goal=best,how=how)
-    def count(klasses): return sum(len(rows) for _,rows in klasses.items())
-    bins  = [bin for col in data.cols.x for bin in col.bins(klasses)] 
-    def step(klasses, here, above):
-      here = dict(leaf=True, has=klasses, left=None,right=None)
-      if here < above and here > stop:
-         here.leaf=False
-         bin,yes,no,most = None,None,None,-1
-         for bin1 in bins:
-           yes1,no1 = bin.selectss(klasses)
-           tmp = score(yes1)
-           if tmp > most: bin,yes,no,most = bin1,yes1,no1,tmp
-        here.left= 
+def tree(data:DATA, klasses, BEST:int, REST:int, best="best", stop=2, how=lambda B,R:B-R):
+  def klass2n(klasses)         : return sum(  len(rows) for _,rows in klasses.items())
+  def klasses2lengths(klasses) : return    {k:len(rows) for k,rows in klasses.items()}
+  def grow(klasses, here, above):
+    node = OBJ(klasses=klasses)
+    if here < above and here > stop: 
+      node.isLeaf = False
+      yes,no,most = None,None,-1
+      for bin in bins:
+        yes1,no1 = bin.selectss(klasses)
+        tmp = -BIN.score(klasses2lengths(yes1),BEST,REST,goal=best,how=how)
+        if tmp > most: 
+          yes,no,most = yes1,no1,tmp
+          node.at, node.txt, node.lo, node.hi = bin.at, bin.txt, bin.lo, bin.hi
+      node.yes = grow(yes, klass2n(yes), here)
+      node.no  = grow(no,  klass2n(no),  here)
+    else:
+      node.isLeaf = True
+    return node
+  #------------------------------------------
+  bins = [bin for col in data.cols.x for bin in col.bins(klasses)] 
+  return grow(klasses, klass2n(klasses) , 1E30) 
 
-
-    here=  count(klasses)
-    stop= here**.5  
-    self.root  = self.step(klasses, count(klasses), 1E30)
-    return self.root
-    
-  
-
-  def step(self,klasses,lvl=0,above=1E30):
-    here = len(klasses[j])  
-    if here <= self.stop or here==above: return self.leaf(klasses)
-    yes,no,most = None,None,-1
-    for bin in self.bins:
-      yes0,no0 = bin,selectss(klass) 
-      tmp = self.score(yes0)
-      if tmp > most: yes,no,most = yes0,no0,tmp
-    return dict(leaf=False, at=bin.at, txt=bin.txt,
-                lo=bin.lo, hi=bin.hi, yes=self.step(yes,lvl+1,here),no=self.step(no,lvl+1,here)) 
-  
-  def lst2len(self,klasses): return {k:len(rows) for k,rows in klasses.items()} 
-
-  def leaf(self,klasses):    return dict(leaf=True, has=self.lst2len(klasses))
-
-  def node(i,d):
-    yield d
-    for d1 in [d.yes,d.no]:
-      for node1 in i.node(d1): yield node1
+def node(tree):
+  yield tree
+  for sub in [tree.yes,tree.no]:
+    for tree1 in node(sub): yield tree1
 
 #----------------------------------------------------------------------------------------
 class NB(OBJ):
@@ -392,8 +377,8 @@ class MAIN:
     n    = int(len(d.rows)**.5)
     best = d.rows[:n] 
     rest = d.rows[-n:] 
-    tree = TREE(d,dict(best=best,rest=rest), n,n,"best","rest").root
-    print(json.dumps(tree, indent=2))
+    t = tree(d,dict(best=best,rest=rest), n,n)
+    print(json.dumps(t, indent=2,default=vars))
 
 # --------------------------------------------
 if __name__=="__main__" and len(sys.argv) > 1: 
