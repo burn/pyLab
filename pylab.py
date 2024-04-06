@@ -15,9 +15,9 @@ USAGE:
   -m --M     handle low frequency classes    = 2
 
 - Discretization options:
-  -b --bins  max number of bins = 10
+  -b --bins  max number of bins = 10  
 """
-class OBJ: 
+class OBJ:  #adas
   "simple struct"
   def __init__(self,**d)    : i.__dict__.update(d)
   __repr__ = lambda x: x.__class__.__name__+str(x.__dict__) 
