@@ -2,7 +2,32 @@
 """
 pylab.py: active learning, models the best/rest seen so far in a Bayes classifier.         
 (c) 2024 Tim Menzies <timm@ieee.org>
+
+USAGE: 
+   ./pylab.py [OPTIONS]
+
+- Options:
+  -h --help  show help          = False
+  -s --seed  random number seed = 1234567891
+
+- Naive Bayes options:
+  -k --K     handle low frequency attributes = 1
+  -m --M     handle low frequency classes    = 2
+
+- Discretization options:
+  -b --bins  max number of bins = 10
 """
+class OBJ: 
+  "simple struct"
+  def __init__(self,**d)    : i.__dict__.update(d)
+  __repr__ = lambda x: x.__class__.__name__+str(x.__dict__) 
+
+def coerce(s:str) -> Any:
+  try: return ast.literal_eval(s) #  
+  except Exception:  return s
+
+the = obj(**{m[1]:coerce(m[2]) for m in re.finditer(r"--(\w+)[^=]*=\s*(\S+)",txt)})
+
 from __future__ import annotations   # <1> ## types  
 from typing import Any,Iterable,Callable
 import re,ast,sys, json,math,random
@@ -25,9 +50,7 @@ class OBJ:
   Base class, defines simple initialization and pretty print.  
   """ 
   def __init__(i,**d)    : i.__dict__.update(d)
-  def __repr__(i) -> str : return i.__class__.__name__+show(i.__dict__)
-  def toJSxON(self): return json.dumps(self, default=lambda o: o.__dict__, 
-                                      sort_keys=True, indent=4)
+  def __repr__(i) -> str : return i.__class__.__name__+show(i.__dict__) 
 #----------------------------------------------------------------------------------------
 # # Classes 
 class BIN(OBJ):
@@ -304,7 +327,7 @@ def merges(b4: list[BIN], merge:Callable) -> list[BIN]:
 
 # ### Strings to things  
 def coerce(s:str) -> Any:
-  try: return ast.literal_eval(s) # <1>
+  try: return ast.literal_eval(s) #  
   except Exception:  return s
 
 def csv(file=None) -> Iterable[Row]:
